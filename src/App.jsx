@@ -6,6 +6,9 @@ import products from "./data/products";
 function App() {
   const [selectedCategory, setSelectedCategory] = useState("الكل");
 
+  // المنتج الذي تم اختياره لعرض التفاصيل
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
   const categories = ["الكل", "رجالي", "نسائي", "أطفال"];
 
   const filteredProducts =
@@ -120,9 +123,12 @@ function App() {
                 className="category-card"
                 onClick={() => {
                   setSelectedCategory("رجالي");
+
                   document
                     .getElementById("products")
-                    .scrollIntoView();
+                    .scrollIntoView({
+                      behavior: "smooth",
+                    });
                 }}
               >
                 <div className="category-icon">👔</div>
@@ -135,9 +141,12 @@ function App() {
                 className="category-card"
                 onClick={() => {
                   setSelectedCategory("نسائي");
+
                   document
                     .getElementById("products")
-                    .scrollIntoView();
+                    .scrollIntoView({
+                      behavior: "smooth",
+                    });
                 }}
               >
                 <div className="category-icon">👗</div>
@@ -150,9 +159,12 @@ function App() {
                 className="category-card"
                 onClick={() => {
                   setSelectedCategory("أطفال");
+
                   document
                     .getElementById("products")
-                    .scrollIntoView();
+                    .scrollIntoView({
+                      behavior: "smooth",
+                    });
                 }}
               >
                 <div className="category-icon">🧒</div>
@@ -208,6 +220,7 @@ function App() {
                 <ProductCard
                   key={product.id}
                   product={product}
+                  onProductClick={setSelectedProduct}
                 />
               ))}
 
@@ -243,6 +256,95 @@ function App() {
         </section>
 
       </main>
+
+
+      {/* =================================
+          Product Details Modal
+      ================================= */}
+
+      {selectedProduct && (
+        <div
+          className="product-modal-overlay"
+          onClick={() => setSelectedProduct(null)}
+        >
+
+          <div
+            className="product-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+
+            {/* Close Button */}
+            <button
+              className="close-modal"
+              onClick={() => setSelectedProduct(null)}
+              aria-label="إغلاق"
+            >
+              ×
+            </button>
+
+
+            {/* Product Image */}
+            <div className="modal-image">
+
+              {selectedProduct.image ? (
+                <img
+                  src={selectedProduct.image}
+                  alt={selectedProduct.name}
+                />
+              ) : (
+                <span>صورة المنتج</span>
+              )}
+
+            </div>
+
+
+            {/* Product Information */}
+            <div className="modal-content">
+
+              <span className="modal-category">
+                {selectedProduct.category}
+              </span>
+
+              <h2>
+                {selectedProduct.name}
+              </h2>
+
+              <p className="modal-price">
+
+                {selectedProduct.price > 0
+                  ? `${selectedProduct.price} ₪`
+                  : "السعر عند الطلب"}
+
+              </p>
+
+              <p className="modal-description">
+                منتج من منتجات قطونيل، متوفر لدى
+                وكيل قطونيل في قلقيلية.
+              </p>
+
+              <p className="modal-description">
+                للاستفسار عن المقاسات والألوان
+                والتوفر، يمكنك التواصل معنا مباشرة
+                عبر WhatsApp.
+              </p>
+
+
+              {/* WhatsApp Order */}
+              <a
+                href="https://wa.me/970XXXXXXXXX"
+                target="_blank"
+                rel="noreferrer"
+                className="modal-whatsapp"
+              >
+                اطلب عبر WhatsApp
+              </a>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
 
       {/* Footer */}

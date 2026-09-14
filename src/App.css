@@ -335,6 +335,7 @@ nav a:hover {
 
 .footer h2 {
   margin-bottom: 12px;
+  color: #bbb;
 }
 
 .footer h3 {
@@ -452,4 +453,177 @@ nav a:hover {
   font-family: inherit;
   color: inherit;
   cursor: pointer;
+}
+/* ================================
+   Product Details Modal
+================================ */
+
+.product-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 9999;
+  animation: fadeIn 0.25s ease;
+}
+
+.product-modal {
+  position: relative;
+  width: 100%;
+  max-width: 850px;
+  background: #ffffff;
+  border-radius: 18px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  direction: rtl;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: modalSlideUp 0.3s ease;
+}
+
+.close-modal {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #333;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+  transition: 0.3s;
+}
+
+.close-modal:hover {
+  background: #16833b;
+  color: #ffffff;
+}
+
+.modal-image {
+  min-height: 430px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 20px;
+}
+
+.modal-content {
+  padding: 50px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.modal-content > span {
+  color: #16833b;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.modal-content h2 {
+  font-size: 30px;
+  margin: 0 0 15px;
+  color: #222;
+}
+
+.modal-price {
+  color: #16833b;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 20px;
+}
+
+.modal-description {
+  color: #666;
+  line-height: 1.8;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.modal-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #16833b;
+  color: white;
+  text-decoration: none;
+  padding: 14px 25px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 20px;
+  transition: 0.3s;
+}
+
+.modal-whatsapp:hover {
+  background: #116b30;
+  transform: translateY(-2px);
+}
+
+/* Modal Animation */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 768px) {
+  .product-modal {
+    grid-template-columns: 1fr;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-image {
+    min-height: 250px;
+  }
+
+  .modal-content {
+    padding: 30px 25px;
+  }
+
+  .modal-content h2 {
+    font-size: 24px;
+  }
+
+  .modal-price {
+    font-size: 21px;
+  }
+
+  .close-modal {
+    top: 10px;
+    left: 10px;
+  }
 }

@@ -1,6 +1,9 @@
-function ProductCard({ product }) {
+function ProductCard({ product, onProductClick }) {
   return (
-    <div className="product-card">
+    <div
+      className="product-card"
+      onClick={() => onProductClick(product)}
+    >
       <div className="product-image">
         صورة المنتج
       </div>
@@ -12,17 +15,20 @@ function ProductCard({ product }) {
 
         <div className="product-bottom">
           <strong>
-            {product.price > 0 ? `${product.price} ₪` : "السعر عند الطلب"}
+            {product.price > 0
+              ? `${product.price} ₪`
+              : "السعر عند الطلب"}
           </strong>
 
-          <a
-            href="https://wa.me/970XXXXXXXXX"
-            target="_blank"
-            rel="noreferrer"
+          <button
             className="order-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onProductClick(product);
+            }}
           >
-            اطلب الآن
-          </a>
+            عرض التفاصيل
+          </button>
         </div>
       </div>
     </div>
