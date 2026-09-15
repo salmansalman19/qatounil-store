@@ -96,7 +96,7 @@ function App() {
   // صفحة الإدارة
   // =========================
 
-  if (window.location.pathname === "/qatounil-store/admin") {
+  if (window.location.pathname === "/admin") {
     if (checkingSession) {
       return (
         <div
