@@ -200,27 +200,26 @@ function App() {
         اكتشف المنتجات
       </button>
     </div>
+        <div className="hero-media">
 
-    <div className="hero-media">
+          <div className="hero-banner">
+            <img
+              src="/cottonil-banner.jpg"
+              alt="Cottonil Qalqilya"
+            />
+          </div>
 
-      <div className="hero-banner">
-        <img
-          src="./public/cottonil-banner.jpg"
-          alt="Cottonil Qalqilya"
-        />
-      </div>
+          <div className="hero-video">
+            <video
+              src="/cottonil-promo.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          </div>
 
-      <div className="hero-video">
-        <video
-          src="./public/cottonil-promo.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-        />
-      </div>
-
-    </div>
+        </div>
 
   </div>
 </section>
