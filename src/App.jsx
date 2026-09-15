@@ -17,15 +17,17 @@ function App() {
   const [adminUser, setAdminUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
+  // Cart
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+
   const categories = ["الكل", "رجالي", "نسائي", "أطفال"];
 
-  // رقم WhatsApp الخاص بالمحل
   const whatsappNumber = "972568030525";
 
-  // =========================
-  // فحص جلسة تسجيل الدخول
-  // =========================
-
+  // =========================================================
+  // Load admin session
+  // =========================================================
   useEffect(() => {
     const checkSession = async () => {
       const { data, error } = await supabase.auth.getSession();
@@ -46,15 +48,12 @@ function App() {
       setAdminUser(session?.user || null);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  // =========================
-  // جلب المنتجات من Supabase
-  // =========================
-
+  // =========================================================
+  // Load products
+  // =========================================================
   useEffect(() => {
     const fetchProducts = async () => {
       setLoadingProducts(true);
@@ -67,11 +66,9 @@ function App() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Supabase products error:", error);
+        console.error("Products error:", error);
         setProductsError("حدث خطأ أثناء تحميل المنتجات.");
-        setProducts([]);
       } else {
-        console.log("Products from Supabase:", data);
         setProducts(data || []);
       }
 
@@ -81,36 +78,44 @@ function App() {
     fetchProducts();
   }, []);
 
-  // =========================
-  // فلترة المنتجات
-  // =========================
+  // =========================================================
+  // Load cart from localStorage
+  // =========================================================
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem("cottonil-cart");
 
-  const filteredProducts =
-    selectedCategory === "الكل"
-      ? products
-      : products.filter(
-          (product) => product.category === selectedCategory
-        );
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
 
-  // =========================
-  // صفحة الإدارة
-  // =========================
+        if (Array.isArray(parsedCart)) {
+          setCart(parsedCart);
+        }
+      }
+    } catch (error) {
+      console.error("Cart load error:", error);
+    }
+  }, []);
 
+  // =========================================================
+  // Save cart to localStorage
+  // =========================================================
+  useEffect(() => {
+    try {
+      localStorage.setItem("cottonil-cart", JSON.stringify(cart));
+    } catch (error) {
+      console.error("Cart save error:", error);
+    }
+  }, [cart]);
+
+  // =========================================================
+  // Admin route
+  // =========================================================
   if (window.location.pathname === "/admin") {
     if (checkingSession) {
       return (
-        <div
-          dir="rtl"
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: "Cairo, sans-serif",
-            fontSize: "18px",
-          }}
-        >
-          جاري تحميل لوحة التحكم...
+        <div className="loading-screen">
+          <p>جاري التحميل...</p>
         </div>
       );
     }
@@ -130,120 +135,252 @@ function App() {
     );
   }
 
-  // =========================
-  // الموقع الرئيسي
-  // =========================
+  // =========================================================
+  // Filter products
+  // =========================================================
+  const filteredProducts =
+    selectedCategory === "الكل"
+      ? products
+      : products.filter(
+          (product) => product.category === selectedCategory
+        );
+
+  // =========================================================
+  // Cart functions
+  // =========================================================
+
+  const addToCart = (product, productQuantity = 1) => {
+    setCart((currentCart) => {
+      const existingProduct = currentCart.find(
+        (item) => item.id === product.id
+      );
+
+      if (existingProduct) {
+        return currentCart.map((item) =>
+          item.id === product.id
+            ? {
+                ...item,
+                quantity: item.quantity + productQuantity,
+              }
+            : item
+        );
+      }
+
+      return [
+        ...currentCart,
+        {
+          ...product,
+          quantity: productQuantity,
+        },
+      ];
+    });
+
+    setSelectedProduct(null);
+    setQuantity(1);
+    setCartOpen(true);
+  };
+
+  const increaseCartQuantity = (productId) => {
+    setCart((currentCart) =>
+      currentCart.map((item) =>
+        item.id === productId
+          ? {
+              ...item,
+              quantity: item.quantity + 1,
+            }
+          : item
+      )
+    );
+  };
+
+  const decreaseCartQuantity = (productId) => {
+    setCart((currentCart) =>
+      currentCart
+        .map((item) =>
+          item.id === productId
+            ? {
+                ...item,
+                quantity: item.quantity - 1,
+              }
+            : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+  };
+
+  const removeFromCart = (productId) => {
+    setCart((currentCart) =>
+      currentCart.filter((item) => item.id !== productId)
+    );
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  // =========================================================
+  // Cart totals
+  // =========================================================
+
+  const cartCount = cart.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
+  const cartTotal = cart.reduce((total, item) => {
+    const price = Number(item.price) || 0;
+    return total + price * item.quantity;
+  }, 0);
+
+  // =========================================================
+  // WhatsApp order
+  // =========================================================
+
+  const sendCartToWhatsApp = () => {
+    if (cart.length === 0) {
+      return;
+    }
+
+    const orderLines = cart
+      .map((item, index) => {
+        const price =
+          Number(item.price) > 0
+            ? `${Number(item.price)} ₪`
+            : "السعر عند الطلب";
+
+        return `${index + 1}. ${item.name}
+القسم: ${item.category}
+الكمية: ${item.quantity}
+السعر: ${price}`;
+      })
+      .join("\n\n");
+
+    const totalText =
+      cartTotal > 0 ? `${cartTotal.toFixed(2)} ₪` : "عند الطلب";
+
+    const message = `مرحبًا، أريد طلب المنتجات التالية من Cottonil Qalqilya:
+
+${orderLines}
+
+الإجمالي: ${totalText}
+
+الاسم:
+العنوان:
+ملاحظات:`;
+
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+      message
+    )}`;
+
+    window.open(whatsappUrl, "_blank");
+  };
+
+  // =========================================================
+  // Main site
+  // =========================================================
 
   return (
     <div className="app" dir="rtl">
-
-      {/* =========================
-          Header
-      ========================= */}
-
+      {/* ========================= Header ========================= */}
       <header className="header">
         <div className="container header-content">
-
-          <div className="logo">
-            <h2>قطونيل</h2>
-            <span>قلقيلية</span>
-          </div>
+          <a href="#" className="logo">
+            <span className="logo-main">Cottonil</span>
+            <span className="logo-sub">Qalqilya</span>
+          </a>
 
           <nav className="nav">
             <a href="#home">الرئيسية</a>
-            <a href="#categories">الأقسام</a>
             <a href="#products">المنتجات</a>
             <a href="#about">من نحن</a>
+            <a href="#contact">تواصل معنا</a>
           </nav>
 
-          <a
-            href={`https://wa.me/${whatsappNumber}`}
-            target="_blank"
-            rel="noreferrer"
-            className="whatsapp-button"
+         <button
+            className="cart-button"
+            onClick={() => setCartOpen(true)}
+            aria-label="السلة"
           >
-            تواصل معنا
-          </a>
+            <span className="cart-icon">🛒</span>
+            <span className="cart-label">السلة</span>
 
+            {cartCount > 0 && (
+              <span className="cart-count">{cartCount}</span>
+            )}
+          </button>
         </div>
       </header>
 
-      {/* =========================
-          Hero
-      ========================= */}
+      {/* ========================= Hero ========================= */}
+      <main>
+        <section className="hero" id="home">
+          <div className="container hero-content">
+            <div className="hero-text">
+              <span className="hero-badge">
+                Cottonil Qalqilya
+              </span>
 
-           <section className="hero">
-  <div className="container hero-content">
+              <h1>
+                راحتك تبدأ
+                <br />
+                من Cottonil
+              </h1>
 
-    <div className="hero-text">
-      <span className="hero-badge">Cottonil Qalqilya</span>
+              <p>
+                اكتشف تشكيلتنا من الملابس الداخلية والملابس
+                العائلية بجودة وراحة تناسب جميع أفراد العائلة.
+              </p>
 
-      <h1>
-        راحتك تبدأ
-        <br />
-        من Cottonil
-      </h1>
+              <button
+                className="hero-button"
+                onClick={() => {
+                  document
+                    .getElementById("products")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                اكتشف المنتجات
+              </button>
+            </div>
 
-      <p>
-        اكتشف تشكيلتنا من الملابس الداخلية والملابس العائلية
-        بجودة وراحة تناسب جميع أفراد العائلة.
-      </p>
+            <div className="hero-media">
+              <div className="hero-banner">
+                <img
+                  src="/cottonil-banner.jpg"
+                  alt="Cottonil Qalqilya"
+                />
+              </div>
 
-      <button
-        className="hero-button"
-        onClick={() => {
-          document
-            .getElementById("products")
-            ?.scrollIntoView({ behavior: "smooth" });
-        }}
-      >
-        اكتشف المنتجات
-      </button>
-    </div>
-        <div className="hero-media">
-
-          <div className="hero-banner">
-            <img
-              src="/cottonil-banner.jpg"
-              alt="Cottonil Qalqilya"
-            />
+              <div className="hero-video">
+                <video
+                  src="/cottonil-promo.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                />
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div className="hero-video">
-            <video
-              src="/cottonil-promo.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
-          </div>
+        {/* ========================= Categories ========================= */}
+        <section className="categories">
+          <div className="container">
+            <div className="section-heading">
+              <span>تسوق حسب القسم</span>
+              <h2>منتجاتنا</h2>
+            </div>
 
-        </div>
-
-  </div>
-</section>
-
-      {/* =========================
-          Categories
-      ========================= */}
-
-      <section className="categories" id="categories">
-        <div className="container">
-
-          <div className="section-heading">
-            <span>تسوق حسب القسم</span>
-            <h2>أقسام المنتجات</h2>
-          </div>
-
-          <div className="category-grid">
-
-            {categories
-              .filter((category) => category !== "الكل")
-              .map((category) => (
+            <div className="category-buttons">
+              {categories.map((category) => (
                 <button
                   key={category}
-                  className="category-card"
+                  className={
+                    selectedCategory === category
+                      ? "category-button active"
+                      : "category-button"
+                  }
                   onClick={() => {
                     setSelectedCategory(category);
 
@@ -253,160 +390,103 @@ function App() {
                         ?.scrollIntoView({
                           behavior: "smooth",
                         });
-                    }, 100);
+                    }, 50);
                   }}
                 >
-                  <h3>{category}</h3>
-                  <span>تصفح المنتجات</span>
+                  {category}
                 </button>
               ))}
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* =========================
-          Products
-      ========================= */}
-
-      <section className="products" id="products">
-        <div className="container">
-
-          <div className="section-heading">
-            <span>منتجاتنا</span>
-            <h2>منتجات قطونيل</h2>
-          </div>
-
-          {/* Filter */}
-
-          <div className="category-filter">
-
-            {categories.map((category) => (
-              <button
-                key={category}
-                className={
-                  selectedCategory === category
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  setSelectedCategory(category)
-                }
-              >
-                {category}
-              </button>
-            ))}
-
-          </div>
-
-          {/* Loading */}
-
-          {loadingProducts && (
-            <div className="products-message">
-              جاري تحميل المنتجات...
             </div>
-          )}
+          </div>
+        </section>
 
-          {/* Error */}
-
-          {!loadingProducts && productsError && (
-            <div className="products-message">
-              {productsError}
+        {/* ========================= Products ========================= */}
+        <section className="products" id="products">
+          <div className="container">
+            <div className="section-heading">
+              <span>تشكيلتنا</span>
+              <h2>أحدث المنتجات</h2>
             </div>
-          )}
 
-          {/* Empty */}
-
-          {!loadingProducts &&
-            !productsError &&
-            filteredProducts.length === 0 && (
-              <div className="products-message">
-                لا توجد منتجات في هذا القسم حاليًا.
+            {loadingProducts ? (
+              <div className="loading-products">
+                <p>جاري تحميل المنتجات...</p>
               </div>
-            )}
-
-          {/* Products */}
-
-          {!loadingProducts &&
-            !productsError &&
-            filteredProducts.length > 0 && (
+            ) : productsError ? (
+              <div className="products-error">
+                <p>{productsError}</p>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="empty-products">
+                <p>لا توجد منتجات في هذا القسم حاليًا.</p>
+              </div>
+            ) : (
               <div className="products-grid">
-
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
-                    onProductClick={(product) => {
-                      setSelectedProduct(product);
+                    onProductClick={(selected) => {
+                      setSelectedProduct(selected);
                       setQuantity(1);
                     }}
                   />
                 ))}
-
               </div>
             )}
-
-        </div>
-      </section>
-
-      {/* =========================
-          About
-      ========================= */}
-
-      <section className="about" id="about">
-        <div className="container">
-
-          <div className="section-heading">
-            <span>من نحن</span>
-            <h2>قطونيل - قلقيلية</h2>
           </div>
+        </section>
 
-          <div className="about-content">
+        {/* ========================= About ========================= */}
+        <section className="about" id="about">
+          <div className="container about-content">
+            <div className="about-text">
+              <span>من نحن</span>
 
-            <p>
-              نوفر لكم منتجات قطونيل الأصلية لمختلف أفراد العائلة،
-              مع اهتمامنا بالجودة والراحة وتقديم خدمة مميزة لعملائنا.
-            </p>
+              <h2>مرحبًا بكم في Cottonil Qalqilya</h2>
 
-            <p>
-              يمكنك تصفح المنتجات واختيار ما يناسبك والتواصل معنا
-              مباشرة عبر WhatsApp لإتمام الطلب.
-            </p>
+              <p>
+                نوفر لكم مجموعة متنوعة من منتجات Cottonil
+                للرجال والنساء والأطفال، مع التركيز على الجودة
+                والراحة والأسعار المناسبة.
+              </p>
 
+              <p>
+                يمكنك اختيار منتجاتك وإرسال طلبك مباشرة عبر
+                WhatsApp بكل سهولة.
+              </p>
+            </div>
+
+            <div className="about-card">
+              <div className="about-icon">✓</div>
+              <h3>جودة وراحة</h3>
+              <p>
+                منتجات مختارة بعناية لتناسب احتياجات العائلة.
+              </p>
+            </div>
           </div>
+        </section>
+      </main>
 
-        </div>
-      </section>
-
-      {/* =========================
-          Product Modal
-      ========================= */}
-
+      {/* ========================= Product Modal ========================= */}
       {selectedProduct && (
         <div
-          className="product-modal-overlay"
+          className="modal-overlay"
           onClick={() => setSelectedProduct(null)}
         >
-
           <div
             className="product-modal"
             onClick={(e) => e.stopPropagation()}
           >
-
-            {/* Close */}
-
             <button
               className="modal-close"
               onClick={() => setSelectedProduct(null)}
+              aria-label="إغلاق"
             >
               ×
             </button>
 
-            {/* Product Image */}
-
             <div className="modal-image">
-
               {selectedProduct.image ? (
                 <img
                   src={selectedProduct.image}
@@ -415,38 +495,30 @@ function App() {
               ) : (
                 <span>صورة المنتج</span>
               )}
-
             </div>
 
-            {/* Product Details */}
-
-            <div className="modal-info">
-
+            <div className="modal-content">
               <span className="modal-category">
                 {selectedProduct.category}
               </span>
 
               <h2>{selectedProduct.name}</h2>
 
+              <p className="modal-description">
+                {selectedProduct.description ||
+                  "منتج عالي الجودة من Cottonil."}
+              </p>
+
               <div className="modal-price">
-                {selectedProduct.price > 0
+                {Number(selectedProduct.price) > 0
                   ? `${selectedProduct.price} ₪`
                   : "السعر عند الطلب"}
               </div>
-
-              {selectedProduct.description && (
-                <p className="modal-description">
-                  {selectedProduct.description}
-                </p>
-              )}
-
-              {/* Quantity */}
 
               <div className="quantity-selector">
                 <span>الكمية:</span>
 
                 <div className="quantity-controls">
-
                   <button
                     type="button"
                     onClick={() =>
@@ -455,7 +527,7 @@ function App() {
                       )
                     }
                   >
-                    −
+                    -
                   </button>
 
                   <strong>{quantity}</strong>
@@ -468,67 +540,249 @@ function App() {
                   >
                     +
                   </button>
-
                 </div>
               </div>
 
-              {/* WhatsApp Order */}
+              <div className="modal-actions">
+                <button
+                  className="add-to-cart-button"
+                  onClick={() =>
+                    addToCart(selectedProduct, quantity)
+                  }
+                >
+                  🛒 أضف إلى السلة
+                </button>
 
-              <a
-                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-                  `مرحبًا، أريد طلب المنتج التالي:
+                <button
+                  className="direct-whatsapp-button"
+                  onClick={() => {
+                    const price =
+                      Number(selectedProduct.price) > 0
+                        ? `${selectedProduct.price} ₪`
+                        : "عند الطلب";
+
+                    const message = `مرحبًا، أريد طلب المنتج التالي:
 
 المنتج: ${selectedProduct.name}
 القسم: ${selectedProduct.category}
 الكمية: ${quantity}
-السعر: ${
-                    selectedProduct.price > 0
-                      ? `${selectedProduct.price} ₪`
-                      : "عند الطلب"
-                  }`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-                className="modal-whatsapp-button"
-              >
-                اطلب عبر WhatsApp
-              </a>
+السعر: ${price}`;
 
+                    window.open(
+                      `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                        message
+                      )}`,
+                      "_blank"
+                    );
+                  }}
+                >
+                  طلب مباشر عبر WhatsApp
+                </button>
+              </div>
             </div>
-
           </div>
-
         </div>
       )}
 
-      {/* =========================
-          Footer
-      ========================= */}
-
-      <footer className="footer">
-        <div className="container">
-
-          <h3>قطونيل - قلقيلية</h3>
-
-          <p>
-            منتجات قطونيل الأصلية للرجال والنساء والأطفال.
-          </p>
-
-          <a
-            href={`https://wa.me/${whatsappNumber}`}
-            target="_blank"
-            rel="noreferrer"
+      {/* ========================= Cart Modal ========================= */}
+      {cartOpen && (
+        <div
+          className="cart-overlay"
+          onClick={() => setCartOpen(false)}
+        >
+          <div
+            className="cart-panel"
+            onClick={(e) => e.stopPropagation()}
           >
-            تواصل معنا عبر WhatsApp
-          </a>
+            <div className="cart-header">
+              <div>
+                <span>طلبك</span>
+                <h2>سلة المنتجات</h2>
+              </div>
 
-          <div className="footer-bottom">
-            © {new Date().getFullYear()} قطونيل - قلقيلية
+              <button
+                className="cart-close"
+                onClick={() => setCartOpen(false)}
+                aria-label="إغلاق"
+              >
+                ×
+              </button>
+            </div>
+
+            {cart.length === 0 ? (
+              <div className="cart-empty">
+                <div className="cart-empty-icon">🛒</div>
+                <h3>السلة فارغة</h3>
+                <p>
+                  أضف بعض المنتجات إلى السلة للبدء بالطلب.
+                </p>
+
+                <button
+                  className="continue-shopping-button"
+                  onClick={() => {
+                    setCartOpen(false);
+
+                    document
+                      .getElementById("products")
+                      ?.scrollIntoView({
+                        behavior: "smooth",
+                      });
+                  }}
+                >
+                  تصفح المنتجات
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="cart-items">
+                  {cart.map((item) => {
+                    const itemPrice = Number(item.price) || 0;
+
+                    return (
+                      <div
+                        className="cart-item"
+                        key={item.id}
+                      >
+                        <div className="cart-item-image">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                            />
+                          ) : (
+                            <span>صورة</span>
+                          )}
+                        </div>
+
+                        <div className="cart-item-info">
+                          <h3>{item.name}</h3>
+
+                          <span className="cart-item-category">
+                            {item.category}
+                          </span>
+
+                          <div className="cart-item-price">
+                            {itemPrice > 0
+                              ? `${itemPrice} ₪`
+                              : "عند الطلب"}
+                          </div>
+
+                          <div className="cart-item-bottom">
+                            <div className="cart-quantity-controls">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  decreaseCartQuantity(
+                                    item.id
+                                  )
+                                }
+                              >
+                                -
+                              </button>
+
+                              <strong>{item.quantity}</strong>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  increaseCartQuantity(
+                                    item.id
+                                  )
+                                }
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            <button
+                              className="remove-cart-item"
+                              type="button"
+                              onClick={() =>
+                                removeFromCart(item.id)
+                              }
+                            >
+                              حذف
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="cart-summary">
+                  <div className="cart-summary-row">
+                    <span>عدد المنتجات</span>
+                    <strong>{cartCount}</strong>
+                  </div>
+
+                  <div className="cart-summary-row total">
+                    <span>الإجمالي</span>
+
+                    <strong>
+                      {cartTotal > 0
+                        ? `${cartTotal.toFixed(2)} ₪`
+                        : "عند الطلب"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="cart-actions">
+                  <button
+                    className="checkout-whatsapp-button"
+                    onClick={sendCartToWhatsApp}
+                  >
+                    إتمام الطلب عبر WhatsApp
+                  </button>
+
+                  <button
+                    className="clear-cart-button"
+                    onClick={clearCart}
+                  >
+                    تفريغ السلة
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================= Footer ========================= */}
+      <footer className="footer" id="contact">
+        <div className="container footer-content">
+          <div className="footer-brand">
+            <h2>Cottonil</h2>
+            <p>
+              متجر Cottonil في قلقيلية للملابس الداخلية
+              والملابس العائلية.
+            </p>
           </div>
 
+          <div className="footer-contact">
+            <h3>تواصل معنا</h3>
+
+            <a
+              href={`https://wa.me/${whatsappNumber}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              WhatsApp
+            </a>
+
+            <a href="tel:+972568030525">
+              056 803 0525
+            </a>
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          <p>
+            © {new Date().getFullYear()} Cottonil Qalqilya. جميع
+            الحقوق محفوظة.
+          </p>
         </div>
       </footer>
-
     </div>
   );
 }
