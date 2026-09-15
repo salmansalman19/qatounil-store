@@ -5,15 +5,30 @@ function ProductCard({ product, onProductClick }) {
       onClick={() => onProductClick(product)}
     >
       <div className="product-image">
-        صورة المنتج
+
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+          />
+        ) : (
+          <span>صورة المنتج</span>
+        )}
+
       </div>
 
       <div className="product-info">
-        <span>{product.category}</span>
 
-        <h3>{product.name}</h3>
+        <span>
+          {product.category}
+        </span>
+
+        <h3>
+          {product.name}
+        </h3>
 
         <div className="product-bottom">
+
           <strong>
             {product.price > 0
               ? `${product.price} ₪`
@@ -29,7 +44,9 @@ function ProductCard({ product, onProductClick }) {
           >
             عرض التفاصيل
           </button>
+
         </div>
+
       </div>
     </div>
   );
